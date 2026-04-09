@@ -14,9 +14,7 @@ public class InMemoryItemStorage implements ItemStorage {
 
     @Override
     public Item save(Item item) {
-        if (item.getId() == null) {
-            item.setId(idGenerator.getAndIncrement());
-        }
+        item.setId(idGenerator.getAndIncrement());
         items.put(item.getId(), item);
         return item;
     }
@@ -46,9 +44,6 @@ public class InMemoryItemStorage implements ItemStorage {
 
     @Override
     public List<Item> search(String text) {
-        if (text == null || text.isBlank()) {
-            return Collections.emptyList();
-        }
         String lowerText = text.toLowerCase();
         return items.values().stream()
                 .filter(item -> Boolean.TRUE.equals(item.getAvailable()))
