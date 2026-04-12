@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.ForbiddenException;
 import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.ValidationException;
 
 import java.util.Map;
 import java.util.Objects;
@@ -49,6 +50,13 @@ public class ErrorHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public Map<String, String> handleConflict(ConflictException e) {
         log.error("Conflict error: {}", e.getMessage(), e);
+        return Map.of("error", e.getMessage());
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleValidation(ValidationException e) {
+        log.error("Validation error: {}", e.getMessage(), e);
         return Map.of("error", e.getMessage());
     }
 }
