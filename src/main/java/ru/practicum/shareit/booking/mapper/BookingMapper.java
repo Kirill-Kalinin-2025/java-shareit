@@ -53,7 +53,7 @@ public class BookingMapper {
         return booking;
     }
 
-    public static BookingShortDto toBookingShortDto(Booking booking) {
+    public BookingShortDto toBookingShortDto(Booking booking) {
         if (booking == null) {
             return null;
         }

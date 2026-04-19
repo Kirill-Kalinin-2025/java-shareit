@@ -20,6 +20,7 @@ import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.storage.CommentRepository;
 import ru.practicum.shareit.item.storage.ItemRepository;
+import ru.practicum.shareit.request.storage.ItemRequestRepository;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.storage.UserRepository;
 
@@ -38,6 +39,9 @@ public class ItemServiceImpl implements ItemService {
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
     private final CommentRepository commentRepository;
+    private final ItemRequestRepository requestRepository;
+    private final BookingMapper bookingMapper;
+
 
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
@@ -53,7 +57,14 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     public ItemDto create(ItemDto itemDto, Long ownerId) {
         getUserOrThrow(ownerId);
+
+        if (itemDto.getRequestId() != null) {
+            requestRepository.findById(itemDto.getRequestId())
+                    .orElseThrow(() -> new NotFoundException("Запрос с id " + itemDto.getRequestId() + " не найден"));
+        }
+
         Item item = ItemMapper.toItem(itemDto, ownerId);
+        item.setRequestId(itemDto.getRequestId());
         Item saved = itemRepository.save(item);
         log.info("Created item with id: {} for owner: {}", saved.getId(), ownerId);
         return ItemMapper.toItemDto(saved);
@@ -98,7 +109,6 @@ public class ItemServiceImpl implements ItemService {
         );
         itemDto.setComments(commentDtos);
 
-        // Добавляем информацию о бронированиях только для владельца
         if (item.getOwner().equals(userId)) {
             addBookingInfoToItem(itemDto, itemId);
         }
@@ -113,7 +123,6 @@ public class ItemServiceImpl implements ItemService {
         List<Item> items = itemRepository.findByOwnerOrderById(ownerId);
         List<Long> itemIds = items.stream().map(Item::getId).toList();
 
-        // Получаем все комментарии для всех вещей владельца
         List<Comment> allComments = commentRepository.findByItemIdIn(itemIds);
         Map<Long, List<CommentDto>> commentsByItemId = allComments.stream()
                 .collect(Collectors.groupingBy(
@@ -123,7 +132,6 @@ public class ItemServiceImpl implements ItemService {
                                 Collectors.toList())
                 ));
 
-        // Получаем все бронирования для вещей владельца
         List<Booking> allBookings = bookingRepository.findByItemIdInOrderByStartDesc(itemIds);
         Map<Long, List<Booking>> bookingsByItemId = allBookings.stream()
                 .collect(Collectors.groupingBy(Booking::getItemId));
@@ -137,10 +145,8 @@ public class ItemServiceImpl implements ItemService {
                             item.getAvailable()
                     );
 
-                    // Добавляем комментарии
                     dto.setComments(commentsByItemId.getOrDefault(item.getId(), Collections.emptyList()));
 
-                    // Добавляем информацию о бронированиях
                     List<Booking> itemBookings = bookingsByItemId.getOrDefault(item.getId(), Collections.emptyList());
                     addBookingInfoFromList(dto, itemBookings);
 
@@ -165,7 +171,6 @@ public class ItemServiceImpl implements ItemService {
         User user = getUserOrThrow(userId);
         Item item = getItemOrThrow(itemId);
 
-        // Проверяем, что пользователь брал вещь в аренду
         boolean hasBooked = bookingRepository.existsByItemIdAndBookerIdAndEndBefore(
                 itemId, userId, LocalDateTime.now());
 
@@ -183,7 +188,6 @@ public class ItemServiceImpl implements ItemService {
     private void addBookingInfoToItem(ItemDtoWithBookings itemDto, Long itemId) {
         LocalDateTime now = LocalDateTime.now();
 
-        // Последнее бронирование (завершенное)
         List<Booking> lastBookings = bookingRepository.findByItemIdAndStatusOrderByStartAsc(
                 itemId, BookingStatus.APPROVED);
 
@@ -192,17 +196,16 @@ public class ItemServiceImpl implements ItemService {
                 .reduce((first, second) -> second)
                 .orElse(null);
 
-        // Следующее бронирование (будущее)
         Booking nextBooking = lastBookings.stream()
                 .filter(b -> b.getStart().isAfter(now))
                 .findFirst()
                 .orElse(null);
 
         if (lastBooking != null) {
-            itemDto.setLastBooking(BookingMapper.toBookingShortDto(lastBooking));
+            itemDto.setLastBooking(bookingMapper.toBookingShortDto(lastBooking));
         }
         if (nextBooking != null) {
-            itemDto.setNextBooking(BookingMapper.toBookingShortDto(nextBooking));
+            itemDto.setNextBooking(bookingMapper.toBookingShortDto(nextBooking));
         }
     }
 
@@ -222,10 +225,10 @@ public class ItemServiceImpl implements ItemService {
                 .orElse(null);
 
         if (lastBooking != null) {
-            itemDto.setLastBooking(BookingMapper.toBookingShortDto(lastBooking));
+            itemDto.setLastBooking(bookingMapper.toBookingShortDto(lastBooking));
         }
         if (nextBooking != null) {
-            itemDto.setNextBooking(BookingMapper.toBookingShortDto(nextBooking));
+            itemDto.setNextBooking(bookingMapper.toBookingShortDto(nextBooking));
         }
     }
 
