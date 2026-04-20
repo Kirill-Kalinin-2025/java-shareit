@@ -82,22 +82,28 @@ class BookingServiceIntegrationTest {
     }
 
     @Test
-    void createBooking_withEndBeforeStart_shouldThrowValidationException() {
-        bookingCreateDto.setEnd(LocalDateTime.now().plusDays(1));
-        bookingCreateDto.setStart(LocalDateTime.now().plusDays(2));
-
-        assertThrows(ValidationException.class,
-                () -> bookingService.create(booker.getId(), bookingCreateDto));
-    }
-
-    @Test
-    void createBooking_withStartEqualsEnd_shouldThrowValidationException() {
+    void createBooking_withStartEqualsEnd_shouldBeValidatedInGateway() {
+        // Валидация перенесена в gateway, server должен создать бронирование
         LocalDateTime same = LocalDateTime.now().plusDays(1);
         bookingCreateDto.setStart(same);
         bookingCreateDto.setEnd(same);
 
-        assertThrows(ValidationException.class,
-                () -> bookingService.create(booker.getId(), bookingCreateDto));
+        BookingDto created = bookingService.create(booker.getId(), bookingCreateDto);
+
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getStatus()).isEqualTo(BookingStatus.WAITING);
+    }
+
+    @Test
+    void createBooking_withEndBeforeStart_shouldBeValidatedInGateway() {
+        // Валидация перенесена в gateway, server должен создать бронирование
+        bookingCreateDto.setEnd(LocalDateTime.now().plusDays(1));
+        bookingCreateDto.setStart(LocalDateTime.now().plusDays(2));
+
+        BookingDto created = bookingService.create(booker.getId(), bookingCreateDto);
+
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getStatus()).isEqualTo(BookingStatus.WAITING);
     }
 
     @Test
