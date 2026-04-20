@@ -45,13 +45,7 @@ public class BookingServiceImpl implements BookingService {
             throw new NotFoundException("Владелец не может бронировать свою вещь с id " + item.getId());
         }
 
-        if (bookingCreateDto.getEnd().isBefore(bookingCreateDto.getStart())) {
-            throw new ValidationException("Дата окончания не может быть раньше даты начала");
-        }
-
-        if (bookingCreateDto.getStart().equals(bookingCreateDto.getEnd())) {
-            throw new ValidationException("Даты начала и окончания не могут совпадать");
-        }
+        // Валидация дат перенесена в gateway, здесь не нужна
 
         Booking booking = bookingMapper.toBooking(bookingCreateDto);
         booking.setBookerId(userId);

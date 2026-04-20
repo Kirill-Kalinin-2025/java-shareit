@@ -157,9 +157,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemDto> search(String text) {
-        if (text == null || text.isBlank()) {
-            return Collections.emptyList();
-        }
+        // Проверка text.isBlank() перенесена в gateway
         return itemRepository.search(text).stream()
                 .map(ItemMapper::toItemDto)
                 .toList();
